@@ -16,7 +16,8 @@
 static uint8_t s_uart1_rx_buf[UART_RX_BUF_SIZE] = {0};
 
 // USB CDC definitions
-static uint8_t s_usb_rx_buf[CMD_BUF_SIZE] = {0};
+static uint8_t s_usb_rx_buf[CMD_RX_BUF_SIZE] = {0};
+static uint8_t s_usb_tx_buf[CMD_TX_BUF_SIZE] = {0};
 
 // UART->NMEA static functions
 static void gps_uart_init();
@@ -28,11 +29,11 @@ void app_main() {
     size_t map_size;
     const cli_cmd_entry_t *cmd_map = cli_cmd_get_map(&map_size);
 
-    cli_init_config_t cli_config = {
-        .rx_buf = s_usb_rx_buf,
-        .cmd_map = cmd_map,
-        .cmd_map_len = map_size,
-    };
+    cli_init_config_t cli_config = {.rx_buf = s_usb_rx_buf,
+                                    .tx_buf = s_usb_tx_buf,
+                                    .cmd_map = cmd_map,
+                                    .cmd_map_len = map_size,
+                                    .tx_func = &CDC_Transmit_FS};
 
     cli_init(&cli_config);
   }
@@ -60,12 +61,12 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
 
 // USB CDC log handler
 void USBD_CDC_AppHandler(uint8_t *buf, size_t len) {
-  CDC_Transmit_FS(buf, len);
+  cli_print(buf, len);
   cli_rx_callback(buf, len);
 }
 
 // printf implementation
 int _write(int file, char *ptr, int len) {
-  CDC_Transmit_FS((uint8_t *)ptr, len);
+  cli_print((uint8_t *)ptr, len);
   return len;
 }

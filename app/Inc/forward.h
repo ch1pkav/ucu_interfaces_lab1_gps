@@ -8,7 +8,7 @@ typedef enum {
   b_TRUE = 1,
 } bool_t;
 
-#define RAW_PRINT(buf, size) CDC_Transmit_FS((uint8_t *)buf, size);
+#define RAW_PRINT(buf, size) cli_print(buf, size)
 
 #define RINGBUF_ISR_COPY(buf_name, max_size) \
   if (size + buf_name ## _buf_offset < max_size) { \
@@ -16,7 +16,7 @@ typedef enum {
   } else { \
     size_t to_end = max_size - buf_name ## _buf_offset; \
     memcpy((void *)&buf_name ## _buf[buf_name ## _buf_offset], buf, to_end); \
-    memcpy((void *)&buf_name ## _buf, \
+    memcpy((void *)buf_name ## _buf, \
            &buf[max_size - buf_name ## _buf_offset], \
            size - to_end); \
   } \

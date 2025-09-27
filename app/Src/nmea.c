@@ -1,3 +1,4 @@
+#include "cli.h"
 #include "stdlib.h"
 #include <stdint.h>
 #include <string.h>
@@ -145,12 +146,12 @@ static nmea_err_t nmea_sentence_parse(char *sentence, nmea_sentence_t *out) {
 static nmea_err_t nmea_raw_parse(const uint8_t *buf, size_t offset,
                                  size_t size) {
   static char s_sentence_buf[NMEA_PARSER_MAX_SENTENCE_SIZE] = {0};
-  static const uint8_t *s_last_sentence_end = NULL;
+  static const uint8_t *s_last_sentence_end = (void *)s_nmea_parser_buf_storage;
   const uint8_t *sentence_begin = s_last_sentence_end;
   const uint8_t *data_end = &(buf[(offset + size) % NMEA_PARSER_BUF_SIZE]);
 
   // handle buffer overflow
-  if (data_end < sentence_begin) {
+  if (data_end >= sentence_begin) {
     s_last_sentence_end = nmea_sentence_find_end(sentence_begin, data_end);
   } else {
     s_last_sentence_end =
@@ -188,8 +189,9 @@ void nmea_rx_callback(const uint8_t *buf, size_t size) {
 // Public interface
 void nmea_process() {
   if (s_nmea_parser_data_ready) {
-    nmea_raw_parse((const uint8_t *)s_nmea_parser_buf, s_nmea_parser_buf_offset,
-                   s_nmea_parser_last_chunk_size);
+    // nmea_raw_parse((const uint8_t *)s_nmea_parser_buf,
+    // s_nmea_parser_buf_offset,
+    //                s_nmea_parser_last_chunk_size);
 
     s_nmea_parser_data_ready = b_FALSE;
   }

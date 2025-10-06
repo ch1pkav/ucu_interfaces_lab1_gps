@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "render.h"
 #include "spi.h"
 #include "usart.h"
 #include "usbd_cdc_if.h"
@@ -13,6 +14,8 @@
 #include "nmea.h"
 
 #define UART_RX_BUF_SIZE RX_BUF_SIZE
+
+#define STATS_REFRESH_PERIOD_TICKS 100
 
 // UART -> NMEA definitions
 static uint8_t s_uart1_rx_buf[UART_RX_BUF_SIZE] = {0};
@@ -48,6 +51,8 @@ void app_main() {
     display_init(&display_config);
   }
 
+  size_t start_tick = HAL_GetTick();
+  size_t i = 0;
   while (1) {
     // process NMEA from uart
     nmea_process();
@@ -55,8 +60,12 @@ void app_main() {
     // process needed tx for cli
     cli_process();
 
-    // process display output
-    display_process();
+    if (HAL_GetTick() - start_tick >= STATS_REFRESH_PERIOD_TICKS) {
+      char buf[64];
+      sprintf(buf, "count: %d", ++i);
+      render_text(buf);
+      start_tick = HAL_GetTick();
+    }
   }
 }
 
@@ -66,7 +75,7 @@ void app_main() {
 static void gps_uart_init() {
   HAL_UARTEx_ReceiveToIdle_DMA(&huart1, s_uart1_rx_buf, sizeof(s_uart1_rx_buf));
   const char *req = "$CCGNQ,GGA\r\n";
-  HAL_UART_Transmit(&huart1, (const uint8_t *)req, strlen(req), 1000);
+  HAL_UART_Transmit(&huart1, (const uint8_t *)req, strlen(req), UINT32_MAX);
 }
 
 // GPS UART handler
@@ -85,3 +94,6 @@ int _write(int file, char *ptr, int len) {
   cli_print((uint8_t *)ptr, len);
   return len;
 }
+
+// display SPI callback
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) { display_callback(hspi); }

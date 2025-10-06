@@ -13,31 +13,28 @@ typedef enum {
   err_CHECKSUM,
   err_AGAIN,
   err_NOTFOUND,
+  err_BUSY,
 } err_t;
 
 #define RAW_PRINT(buf, size) cli_print(buf, size)
 
-#define RINGBUF_ISR_COPY(buf_name, max_size) \
-  if (size + buf_name ## _buf_offset < max_size) { \
-    memcpy((void *)&buf_name ## _buf[buf_name ## _buf_offset], buf, size); \
-  } else { \
-    size_t to_end = max_size - buf_name ## _buf_offset; \
-    memcpy((void *)&buf_name ## _buf[buf_name ## _buf_offset], buf, to_end); \
-    memcpy((void *)buf_name ## _buf, \
-           &buf[max_size - buf_name ## _buf_offset], \
-           size - to_end); \
-  } \
-  buf_name ## _buf_offset = \
-      (buf_name ## _buf_offset + size) % max_size; \
-  buf_name ## _last_chunk_size = size; \
-  buf_name ## _data_ready = b_TRUE
+#define RINGBUF_ISR_COPY(buf_name, max_size)                                   \
+  if (size + buf_name##_buf_offset < max_size) {                               \
+    memcpy((void *)&buf_name##_buf[buf_name##_buf_offset], buf, size);         \
+  } else {                                                                     \
+    size_t to_end = max_size - buf_name##_buf_offset;                          \
+    memcpy((void *)&buf_name##_buf[buf_name##_buf_offset], buf, to_end);       \
+    memcpy((void *)buf_name##_buf, &buf[max_size - buf_name##_buf_offset],     \
+           size - to_end);                                                     \
+  }                                                                            \
+  buf_name##_buf_offset = (buf_name##_buf_offset + size) % max_size;           \
+  buf_name##_last_chunk_size = size;                                           \
+  buf_name##_data_ready = b_TRUE
 
-
-#define RINGBUF_DECLARE(buf_name, ptr) \
-  static volatile uint8_t* buf_name##_buf = ptr; \
-  static volatile size_t buf_name##_buf_offset = 0; \
-  static volatile size_t buf_name##_last_chunk_size = 0; \
+#define RINGBUF_DECLARE(buf_name, ptr)                                         \
+  static volatile uint8_t *buf_name##_buf = ptr;                               \
+  static volatile size_t buf_name##_buf_offset = 0;                            \
+  static volatile size_t buf_name##_last_chunk_size = 0;                       \
   static volatile bool_t buf_name##_data_ready = b_FALSE
-
 
 #endif //_LAB1_FORWARD_H

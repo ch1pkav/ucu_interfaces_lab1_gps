@@ -51,6 +51,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     app/Src/app_main.c
     app/Src/cli.c
     app/Src/cli_cmd.c
+    app/Src/display.c
+    app/Src/render.c
 )
 
 # Add include paths

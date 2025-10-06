@@ -5,6 +5,7 @@
 void render_text(const char* str);
 void render_set_fg_color(uint16_t col);
 void render_set_bg_color(uint16_t col);
+void render_set_row(uint8_t row);
 
 
 #endif //_LAB2_RENDER_H

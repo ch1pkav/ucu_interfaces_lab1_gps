@@ -5,6 +5,7 @@
 
 #include "forward.h"
 #include "nmea.h"
+#include "stm32f4xx_hal.h"
 
 // Parser definitions
 static nmea_sentence_t s_nmea_last_sentence = {0};
@@ -16,6 +17,10 @@ RINGBUF_DECLARE(s_nmea_parser, s_nmea_parser_buf_storage);
 
 // Raw toggle
 static bool_t s_raw = b_FALSE;
+
+// Stale?
+static size_t s_last_update = 0;
+#define TICKS_TO_STALE 10000
 
 // NMEA parsing
 static const uint8_t *nmea_sentence_find_end(const uint8_t *begin,
@@ -129,7 +134,7 @@ static err_t nmea_sentence_parse_token(nmea_token_type_t token_type,
     break;
 
   case entt_BEGIN:
-    if (strstr(token, "GNGGA") == NULL) {
+    if (strstr(token, "GGA") == NULL) {
       return err_AGAIN;
     }
     break;
@@ -142,14 +147,18 @@ static err_t nmea_sentence_parse_token(nmea_token_type_t token_type,
 
 static err_t nmea_sentence_parse(char *sentence, nmea_sentence_t *out) {
   const char *token = strtok(sentence, ",");
-  bool_t gngga = b_TRUE;
+  bool_t gga = b_TRUE;
   for (uint8_t token_num = 0; token; ++token_num) {
-    if (gngga &&
-        nmea_sentence_parse_token(token_num, token, out) == err_AGAIN) {
-      gngga = b_FALSE;
+    if (gga && nmea_sentence_parse_token(token_num, token, out) == err_AGAIN) {
+      gga = b_FALSE;
     }
     token = strtok(NULL, ",");
   }
+
+  if (gga) {
+    s_last_update = HAL_GetTick();
+  }
+
   return err_OK;
 }
 
@@ -209,6 +218,10 @@ void nmea_process() {
 
     s_nmea_parser_data_ready = b_FALSE;
   }
+
+  s_nmea_last_sentence.stale =
+      (s_nmea_last_sentence.stale ||
+       ((HAL_GetTick() - s_last_update) > TICKS_TO_STALE));
 }
 
 const nmea_sentence_t *nmea_get_last_sentence() {

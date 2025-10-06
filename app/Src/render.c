@@ -7,9 +7,10 @@
 
 uint16_t s_fg_color = 0xFFFF;
 uint16_t s_bg_color = 0x0000;
+uint8_t s_row = 0;
 
-#define FONT_HEIGHT 6
-#define FONT_WIDTH 8
+#define FONT_HEIGHT 8
+#define FONT_WIDTH 6
 
 const char font6x8_ascii[128][6] = {
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // 0x00
@@ -143,8 +144,8 @@ const char font6x8_ascii[128][6] = {
 };
 
 void process_char(char c, uint16_t *buf) { // 6x8x2 = 96 bytes per char
-  for (uint8_t i = 0; i < FONT_HEIGHT; ++i) {
-    for (uint8_t j = 0; j < FONT_WIDTH; ++j) {
+  for (uint8_t i = 0; i < FONT_WIDTH; ++i) {
+    for (uint8_t j = 0; j < FONT_HEIGHT; ++j) {
       if ((font6x8_ascii[(uint8_t)c][i] >> j) & 0x01) {
         buf[i * j] = s_fg_color;
       } else {
@@ -157,12 +158,14 @@ void process_char(char c, uint16_t *buf) { // 6x8x2 = 96 bytes per char
 void render_text(const char *str) {
   uint16_t buf[FONT_HEIGHT * FONT_WIDTH];
   for (size_t i = 0; str[i] != 0; ++i) {
-    display_set_window(i * FONT_WIDTH, i * FONT_HEIGHT, (i + 1) * FONT_WIDTH,
-                       (i + 1) * FONT_HEIGHT);
+    display_set_window(i * FONT_WIDTH, (i + s_row) * FONT_HEIGHT,
+                       (i + 1) * FONT_WIDTH, (i + 1 + s_row) * FONT_HEIGHT);
     process_char(str[i], buf);
     display_draw_rgb565(buf, FONT_HEIGHT * FONT_WIDTH);
   }
 }
+
+void render_set_row(uint8_t row) { s_row = row; }
 
 void render_set_bg_color(uint16_t col) { s_bg_color = col; }
 

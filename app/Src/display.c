@@ -10,7 +10,7 @@
 #include "display.h"
 #include "ili9341_defs.h"
 
-#define CMD_FIFO_LEN 4
+#define CMD_FIFO_LEN 16
 #define CMD_MAX_DATA_SIZE 256
 
 typedef struct {
@@ -45,16 +45,25 @@ void set_data() {
   s_tx_state = ets_DATA;
 }
 
+void chip_sel() { HAL_GPIO_WritePin(s_config.gpio_port, s_config.cs_pin, 0); }
+
+void chip_desel() { HAL_GPIO_WritePin(s_config.gpio_port, s_config.cs_pin, 1); }
+
 // ----Blocking direct operations for init---- //
 void transfer_data_blocking(const uint8_t *buf, size_t size) {
   HAL_SPI_Transmit(s_config.spi_handle, buf, size, UINT32_MAX);
 }
 
 void write_reg_blocking(uint8_t reg, const uint8_t *buf, size_t size) {
+  chip_sel();
   set_cmd();
   transfer_data_blocking(&reg, 1);
+  chip_desel();
+
+  chip_sel();
   set_data();
   transfer_data_blocking(buf, size);
+  chip_desel();
 }
 
 void spi_tft_init_procedure() {
@@ -62,10 +71,10 @@ void spi_tft_init_procedure() {
 
   // GPIO RST
   HAL_GPIO_WritePin(s_config.gpio_port, s_config.rst_pin, 0);
-  HAL_Delay(120);
+  HAL_Delay(12);
   HAL_GPIO_WritePin(s_config.gpio_port, s_config.rst_pin, 1);
-  HAL_Delay(120);
-  HAL_GPIO_WritePin(s_config.gpio_port, s_config.cs_pin, 1);
+  HAL_Delay(12);
+  chip_desel();
   HAL_Delay(120);
 
   // SWRST
@@ -82,7 +91,7 @@ void spi_tft_init_procedure() {
   write_reg_blocking(ILI9341_PIXFMT, &tmp, 1);
 
   // MADCTL
-  tmp = 0x00;
+  tmp = 0x20; // col-major easier to draw 6x8 font
   write_reg_blocking(ILI9341_MADCTL, &tmp, 1);
 
   // FRMCTR
@@ -112,6 +121,7 @@ err_t queue_cmd(const spi_cmd_t *cmd) {
   memcpy(&s_cmd_fifo[s_fifo_head], cmd, sizeof(spi_cmd_t));
 
   if (s_tx_state == ets_NONE) {
+    chip_sel();
     set_cmd();
     HAL_SPI_Transmit_DMA(s_config.spi_handle, &s_cmd_fifo[s_fifo_head].cmd, 1);
   }
@@ -121,7 +131,6 @@ err_t queue_cmd(const spi_cmd_t *cmd) {
   return err_OK;
 }
 
-
 // -----Public interface------ //
 void display_init(const display_init_config_t *config) {
   s_config = *config;
@@ -130,6 +139,7 @@ void display_init(const display_init_config_t *config) {
 
 void display_callback(void *spi) {
   if (s_config.spi_handle == spi) {
+    chip_desel();
 
     switch (s_tx_state) {
     case ets_CMD:
@@ -140,16 +150,19 @@ void display_callback(void *spi) {
       }
 
       // send data
+      chip_sel();
       set_data();
       HAL_SPI_Transmit_DMA(spi, s_cmd_fifo[s_cur_cmd].data,
                            s_cmd_fifo[s_cur_cmd].data_size);
       break;
+
     case ets_DATA:
       // cleanup last cmd
       memset(&s_cmd_fifo[s_cur_cmd], 0x00, sizeof(spi_cmd_t));
       s_cur_cmd = (s_cur_cmd + 1) % CMD_FIFO_LEN;
 
       // send next cmd
+      chip_sel();
       set_cmd();
       HAL_SPI_Transmit_DMA(spi, &s_cmd_fifo[s_cur_cmd].cmd, 1);
       break;
@@ -179,11 +192,11 @@ void display_set_window(uint16_t start_x, uint16_t start_y, uint16_t end_x,
   queue_cmd(&tmp_cmd);
 }
 
-void display_draw_rgb565(uint16_t* buf, size_t size) {
+void display_draw_rgb565(uint16_t *buf, size_t size) {
   spi_cmd_t tmp_cmd = {
-    ILI9341_RAMWR,
-    {},
-    size,
+      ILI9341_RAMWR,
+      {},
+      size * sizeof(uint16_t),
   };
 
   memcpy(tmp_cmd.data, buf, size * sizeof(uint16_t));

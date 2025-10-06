@@ -3,6 +3,7 @@
 
 #include "render.h"
 #include "spi.h"
+#include "stm32f4xx_hal.h"
 #include "usart.h"
 #include "usbd_cdc_if.h"
 
@@ -27,7 +28,22 @@ static uint8_t s_usb_tx_buf[CMD_TX_BUF_SIZE] = {0};
 // UART->NMEA static functions
 static void gps_uart_init();
 
+// UID
+uint32_t uid[3] = {0};
+
 void app_main() {
+  char buf[64];
+  uid[0] = HAL_GetUIDw0();
+  uid[1] = HAL_GetUIDw1();
+  uid[2] = HAL_GetUIDw2();
+  sprintf(buf, "MCUID: %x%x%x%x-%x%x%x%x-%x%x%x%x",
+          (uint8_t)(uid[0] >> 24) & 0xFF, (uint8_t)(uid[0] >> 16) & 0xFF,
+          (uint8_t)(uid[0] >> 8) & 0xFF, (uint8_t)(uid[0] & 0xFF),
+          (uint8_t)(uid[1] >> 24) & 0xFF, (uint8_t)(uid[1] >> 16) & 0xFF,
+          (uint8_t)(uid[1] >> 8) & 0xFF, (uint8_t)(uid[1] & 0xFF),
+          (uint8_t)(uid[2] >> 24) & 0xFF, (uint8_t)(uid[2] >> 16) & 0xFF,
+          (uint8_t)(uid[2] >> 8) & 0xFF, (uint8_t)(uid[2] & 0xFF));
+
   gps_uart_init();
 
   {
@@ -51,8 +67,13 @@ void app_main() {
     display_init(&display_config);
   }
 
+  // Render MCUID
+  render_set_row(4);
+  render_text(buf);
+
   size_t start_tick = HAL_GetTick();
   size_t i = 0;
+
   while (1) {
     // process NMEA from uart
     nmea_process();
@@ -61,9 +82,10 @@ void app_main() {
     cli_process();
 
     if (HAL_GetTick() - start_tick >= STATS_REFRESH_PERIOD_TICKS) {
-      char buf[64];
-      sprintf(buf, "count: %d", ++i);
+      sprintf(buf, "%d", ++i);
+      render_set_row(0);
       render_text(buf);
+
       start_tick = HAL_GetTick();
     }
   }

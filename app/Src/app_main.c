@@ -28,6 +28,10 @@ static uint8_t s_usb_tx_buf[CMD_TX_BUF_SIZE] = {0};
 // UART->NMEA static functions
 static void gps_uart_init();
 
+#define HEXIFY_U32(arg)                                                        \
+  (uint8_t)((arg >> 24) & 0xFF), (uint8_t)((arg >> 16) & 0xFF),                \
+      (uint8_t)((arg >> 8) & 0xFF), (uint8_t)(arg & 0xFF)
+
 // UID
 uint32_t uid[3] = {0};
 
@@ -36,13 +40,9 @@ void app_main() {
   uid[0] = HAL_GetUIDw0();
   uid[1] = HAL_GetUIDw1();
   uid[2] = HAL_GetUIDw2();
-  sprintf(buf, "MCUID: %x%x%x%x-%x%x%x%x-%x%x%x%x",
-          (uint8_t)(uid[0] >> 24) & 0xFF, (uint8_t)(uid[0] >> 16) & 0xFF,
-          (uint8_t)(uid[0] >> 8) & 0xFF, (uint8_t)(uid[0] & 0xFF),
-          (uint8_t)(uid[1] >> 24) & 0xFF, (uint8_t)(uid[1] >> 16) & 0xFF,
-          (uint8_t)(uid[1] >> 8) & 0xFF, (uint8_t)(uid[1] & 0xFF),
-          (uint8_t)(uid[2] >> 24) & 0xFF, (uint8_t)(uid[2] >> 16) & 0xFF,
-          (uint8_t)(uid[2] >> 8) & 0xFF, (uint8_t)(uid[2] & 0xFF));
+
+  sprintf(buf, "MCUID: %x%x%x%x-%x%x%x%x-%x%x%x%x", HEXIFY_U32(uid[0]),
+          HEXIFY_U32(uid[1]), HEXIFY_U32(uid[2]));
 
   gps_uart_init();
 

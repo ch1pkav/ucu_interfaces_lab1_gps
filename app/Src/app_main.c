@@ -36,7 +36,7 @@ static void gps_uart_init();
 uint32_t uid[3] = {0};
 
 void app_main() {
-  char buf[64];
+  char buf[128];
   uid[0] = HAL_GetUIDw0();
   uid[1] = HAL_GetUIDw1();
   uid[2] = HAL_GetUIDw2();

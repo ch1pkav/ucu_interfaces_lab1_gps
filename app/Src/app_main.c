@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "spi.h"
 #include "usart.h"
 #include "usbd_cdc_if.h"
 
@@ -8,6 +9,7 @@
 
 #include "cli.h"
 #include "cli_cmd.h"
+#include "display.h"
 #include "nmea.h"
 
 #define UART_RX_BUF_SIZE RX_BUF_SIZE
@@ -38,12 +40,23 @@ void app_main() {
     cli_init(&cli_config);
   }
 
+  {
+    const display_init_config_t display_config = {&hspi1,      DISP_GPIO_PORT,
+                                                  DISP_BL_Pin, DISP_CS_Pin,
+                                                  DISP_DC_Pin, DISP_RESET_Pin};
+
+    display_init(&display_config);
+  }
+
   while (1) {
     // process NMEA from uart
     nmea_process();
 
     // process needed tx for cli
     cli_process();
+
+    // process display output
+    display_process();
   }
 }
 
@@ -52,6 +65,8 @@ void app_main() {
 // GPS UART initialization
 static void gps_uart_init() {
   HAL_UARTEx_ReceiveToIdle_DMA(&huart1, s_uart1_rx_buf, sizeof(s_uart1_rx_buf));
+  const char *req = "$CCGNQ,GGA\r\n";
+  HAL_UART_Transmit(&huart1, (const uint8_t *)req, strlen(req), 1000);
 }
 
 // GPS UART handler

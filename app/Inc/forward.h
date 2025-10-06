@@ -8,6 +8,13 @@ typedef enum {
   b_TRUE = 1,
 } bool_t;
 
+typedef enum {
+  err_OK,
+  err_CHECKSUM,
+  err_AGAIN,
+  err_NOTFOUND,
+} err_t;
+
 #define RAW_PRINT(buf, size) cli_print(buf, size)
 
 #define RINGBUF_ISR_COPY(buf_name, max_size) \

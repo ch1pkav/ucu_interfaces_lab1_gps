@@ -99,9 +99,9 @@ static nmea_pos_t parse_pos(const char *token, char *parse_buf, size_t step) {
   return res;
 }
 
-static nmea_err_t nmea_sentence_parse_token(nmea_token_type_t token_type,
-                                            const char *token,
-                                            nmea_sentence_t *out) {
+static err_t nmea_sentence_parse_token(nmea_token_type_t token_type,
+                                       const char *token,
+                                       nmea_sentence_t *out) {
   static char parse_buf[NMEA_PARSER_DEFAULT_TOKEN_SIZE] = {0};
   switch (token_type) {
   case entt_TIMESTAMP:
@@ -128,23 +128,32 @@ static nmea_err_t nmea_sentence_parse_token(nmea_token_type_t token_type,
     out->quality = atoi(token);
     break;
 
+  case entt_BEGIN:
+    if (strstr(token, "GNGGA") == NULL) {
+      return err_AGAIN;
+    }
+    break;
+
   default:
     break;
   }
   return err_OK;
 }
 
-static nmea_err_t nmea_sentence_parse(char *sentence, nmea_sentence_t *out) {
+static err_t nmea_sentence_parse(char *sentence, nmea_sentence_t *out) {
   const char *token = strtok(sentence, ",");
+  bool_t gngga = b_TRUE;
   for (uint8_t token_num = 0; token; ++token_num) {
-    nmea_sentence_parse_token(token_num, token, out);
+    if (gngga &&
+        nmea_sentence_parse_token(token_num, token, out) == err_AGAIN) {
+      gngga = b_FALSE;
+    }
     token = strtok(NULL, ",");
   }
   return err_OK;
 }
 
-static nmea_err_t nmea_raw_parse(const uint8_t *buf, size_t offset,
-                                 size_t size) {
+static err_t nmea_raw_parse(const uint8_t *buf, size_t offset, size_t size) {
   static char s_sentence_buf[NMEA_PARSER_MAX_SENTENCE_SIZE] = {0};
   static const uint8_t *s_last_sentence_end = (void *)s_nmea_parser_buf_storage;
   const uint8_t *sentence_begin = s_last_sentence_end;
@@ -162,17 +171,21 @@ static nmea_err_t nmea_raw_parse(const uint8_t *buf, size_t offset,
     }
   }
 
+  if (*sentence_begin != '$') {
+    return err_AGAIN;
+  }
+
   // no new valid sentence
   if (s_last_sentence_end == NULL) {
     s_last_sentence_end = sentence_begin;
-    return err_AGAIN;
+    return err_NOTFOUND;
   }
 
   nmea_sentence_get(buf, sentence_begin, s_last_sentence_end, s_sentence_buf);
 
-  if (!nmea_sentence_checksum(s_sentence_buf)) {
-    return err_CHECKSUM;
-  }
+  // if (!nmea_sentence_checksum(s_sentence_buf)) {
+  //   return err_CHECKSUM;
+  // }
 
   return nmea_sentence_parse(s_sentence_buf, &s_nmea_last_sentence);
 }
@@ -189,9 +202,10 @@ void nmea_rx_callback(const uint8_t *buf, size_t size) {
 // Public interface
 void nmea_process() {
   if (s_nmea_parser_data_ready) {
-    // nmea_raw_parse((const uint8_t *)s_nmea_parser_buf,
-    // s_nmea_parser_buf_offset,
-    //                s_nmea_parser_last_chunk_size);
+    while (nmea_raw_parse((const uint8_t *)s_nmea_parser_buf,
+                          s_nmea_parser_buf_offset,
+                          s_nmea_parser_last_chunk_size) != err_NOTFOUND) {
+    }
 
     s_nmea_parser_data_ready = b_FALSE;
   }

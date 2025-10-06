@@ -6,12 +6,6 @@
 #include <stdint.h>
 
 typedef enum {
-  err_OK,
-  err_CHECKSUM,
-  err_AGAIN,
-} nmea_err_t;
-
-typedef enum {
   entt_BEGIN = 0,
   entt_TIMESTAMP,
   entt_LAT,

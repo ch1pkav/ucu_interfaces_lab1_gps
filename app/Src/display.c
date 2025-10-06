@@ -172,8 +172,6 @@ void display_callback(void *spi) {
   }
 }
 
-void display_render_string(uint8_t start_x, uint8_t start_y, const char *str) {}
-
 void display_set_window(uint16_t start_x, uint16_t start_y, uint16_t end_x,
                         uint16_t end_y) {
   spi_cmd_t tmp_cmd = {ILI9341_CASET,

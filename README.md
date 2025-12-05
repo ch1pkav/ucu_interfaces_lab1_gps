@@ -37,4 +37,5 @@ All output is in csv format. USB CDC baud rate is 115200.
 - RAW OFF - self-explanatory
 
 Example of running commands:
+
 <img width="682" height="786" alt="image" src="https://github.com/user-attachments/assets/cf76599f-369e-4123-9260-509f763295ac" />

@@ -7,6 +7,7 @@
 #include "cli.h"
 #include "forward.h"
 #include "stm32f4xx_hal.h"
+#include "stm32f4xx_hal_gpio.h"
 
 // Parser definitions
 static nmea_sentence_t s_nmea_last_sentence = {0};
@@ -192,6 +193,7 @@ void nmea_rx_callback(const uint8_t *buf, size_t size) {
   if (s_raw) {
     RAW_PRINT(buf, size);
   }
+  BLINK_LED();
 
   RINGBUF_ISR_COPY(s_nmea_parser, NMEA_PARSER_BUF_SIZE);
 }

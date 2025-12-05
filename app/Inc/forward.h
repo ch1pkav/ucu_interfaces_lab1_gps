@@ -37,4 +37,7 @@ typedef enum {
   static volatile size_t buf_name##_last_chunk_size = 0;                       \
   static volatile bool_t buf_name##_data_ready = b_FALSE
 
+#define BLINK_LED() \
+  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15)
+
 #endif //_LAB1_FORWARD_H

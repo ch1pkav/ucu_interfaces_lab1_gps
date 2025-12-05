@@ -1,10 +1,11 @@
-#include "cli.h"
-#include "stdlib.h"
+#include "nmea.h"
+
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
+#include "cli.h"
 #include "forward.h"
-#include "nmea.h"
 #include "stm32f4xx_hal.h"
 
 // Parser definitions
@@ -55,19 +56,6 @@ static size_t nmea_sentence_get(const uint8_t *in_buf,
   out_buf[sentence_len] = '\0';
 
   return sentence_len;
-}
-
-static bool_t nmea_sentence_checksum(const char *sentence) {
-  const char *const start = strstr(sentence, "$") + 1;
-  const char *const end = strstr(sentence, "*");
-  const uint8_t exp = atoi(end + 1);
-  uint8_t acc = 0x00;
-
-  for (const char *ptr = start; ptr < end; ++ptr) {
-    acc ^= *ptr;
-  }
-
-  return acc == exp;
 }
 
 static nmea_timestamp_t parse_timestamp(const char *token, char *parse_buf) {
@@ -167,6 +155,10 @@ static err_t nmea_raw_parse(const uint8_t *buf, size_t offset, size_t size) {
   static const uint8_t *s_last_sentence_end = (void *)s_nmea_parser_buf_storage;
   const uint8_t *sentence_begin = s_last_sentence_end;
   const uint8_t *data_end = &(buf[(offset + size) % NMEA_PARSER_BUF_SIZE]);
+  if (sentence_begin == NULL) {
+    s_last_sentence_end = buf;
+    return err_AGAIN;
+  }
 
   // handle buffer overflow
   if (data_end >= sentence_begin) {
@@ -191,10 +183,6 @@ static err_t nmea_raw_parse(const uint8_t *buf, size_t offset, size_t size) {
   }
 
   nmea_sentence_get(buf, sentence_begin, s_last_sentence_end, s_sentence_buf);
-
-  // if (!nmea_sentence_checksum(s_sentence_buf)) {
-  //   return err_CHECKSUM;
-  // }
 
   return nmea_sentence_parse(s_sentence_buf, &s_nmea_last_sentence);
 }

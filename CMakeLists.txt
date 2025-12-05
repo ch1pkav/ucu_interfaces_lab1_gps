@@ -51,8 +51,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     app/Src/app_main.c
     app/Src/cli.c
     app/Src/cli_cmd.c
-    app/Src/display.c
-    app/Src/render.c
 )
 
 # Add include paths
@@ -75,3 +73,21 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
 )
+
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules" ${CMAKE_MODULE_PATH})
+find_package(STM32CubeProgrammer)
+
+set(STM32CubeProg ${STM32CubeProgrammer_CLI_EXECUTABLE})
+
+if(STM32CubeProgrammer_FOUND)
+    add_custom_target(flash
+        COMMAND ${STM32CubeProg} --connect port=SWD --download ${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}.elf --start
+
+        DEPENDS
+        ${CMAKE_PROJECT_NAME}
+
+        COMMENT "Flashing ${PROJECT_NAME}.elf to STM32 using STM32CubeProgrammer"
+    )
+else()
+    message(STATUS "STM32CubeProgrammer not found, skipping flash target")
+endif()

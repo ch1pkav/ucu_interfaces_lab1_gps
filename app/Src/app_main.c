@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "render.h"
 #include "spi.h"
 #include "stm32f4xx_hal.h"
 #include "usart.h"
@@ -11,7 +10,6 @@
 
 #include "cli.h"
 #include "cli_cmd.h"
-#include "display.h"
 #include "nmea.h"
 
 #define UART_RX_BUF_SIZE RX_BUF_SIZE
@@ -32,17 +30,7 @@ static void gps_uart_init();
   (uint8_t)((arg >> 24) & 0xFF), (uint8_t)((arg >> 16) & 0xFF),                \
       (uint8_t)((arg >> 8) & 0xFF), (uint8_t)(arg & 0xFF)
 
-// UID
-uint32_t uid[3] = {0};
-
 void app_main() {
-  char buf[128];
-  uid[0] = HAL_GetUIDw0();
-  uid[1] = HAL_GetUIDw1();
-  uid[2] = HAL_GetUIDw2();
-
-  sprintf(buf, "MCUID: %x%x%x%x-%x%x%x%x-%x%x%x%x", HEXIFY_U32(uid[0]),
-          HEXIFY_U32(uid[1]), HEXIFY_U32(uid[2]));
 
   gps_uart_init();
 
@@ -59,35 +47,12 @@ void app_main() {
     cli_init(&cli_config);
   }
 
-  {
-    const display_init_config_t display_config = {&hspi1,      DISP_GPIO_PORT,
-                                                  DISP_BL_Pin, DISP_CS_Pin,
-                                                  DISP_DC_Pin, DISP_RESET_Pin};
-
-    display_init(&display_config);
-  }
-
-  // Render MCUID
-  render_set_row(4);
-  render_text(buf);
-
-  size_t start_tick = HAL_GetTick();
-  size_t i = 0;
-
   while (1) {
     // process NMEA from uart
     nmea_process();
 
     // process needed tx for cli
     cli_process();
-
-    if (HAL_GetTick() - start_tick >= STATS_REFRESH_PERIOD_TICKS) {
-      sprintf(buf, "%d", ++i);
-      render_set_row(0);
-      render_text(buf);
-
-      start_tick = HAL_GetTick();
-    }
   }
 }
 
@@ -116,6 +81,3 @@ int _write(int file, char *ptr, int len) {
   cli_print((uint8_t *)ptr, len);
   return len;
 }
-
-// display SPI callback
-void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) { display_callback(hspi); }
